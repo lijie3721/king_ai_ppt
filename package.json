@@ -1,0 +1,31 @@
+{
+  "name": "ai-ppt",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "concurrently \"vite --host 127.0.0.1\" \"node server/index.mjs\"",
+    "client:dev": "vite --host 127.0.0.1",
+    "server:dev": "node server/index.mjs",
+    "build": "tsc -b && vite build",
+    "test": "NODE_OPTIONS=--max-old-space-size=8192 vitest run",
+    "test:watch": "NODE_OPTIONS=--max-old-space-size=8192 vitest"
+  },
+  "dependencies": {
+    "@vitejs/plugin-react": "^5.0.0",
+    "concurrently": "^9.2.0",
+    "vite": "^7.0.0",
+    "typescript": "^5.8.0",
+    "vitest": "^3.2.0",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
+    "lucide-react": "^0.468.0",
+    "marked": "^15.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "@types/react": "^19.1.0",
+    "@types/react-dom": "^19.1.0",
+    "jsdom": "^26.1.0"
+  }
+}
