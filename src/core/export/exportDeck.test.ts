@@ -171,6 +171,22 @@ Intro
     expect(html).toContain(".slide__text-layer");
   });
 
+  it("exports title style edits without turning the title into free layout", () => {
+    const deck = parseMarkdownDeck(`# Title
+
+Intro`);
+
+    const html = createStandaloneHtml(deck, themes["business-report"], {}, undefined, "top-right", {}, {
+      "slide-1": {
+        title: { x: 50, y: 50, style: { color: "#e23d28", fontSize: 72 } }
+      }
+    });
+
+    expect(html).toContain('data-text-block="title" data-text-style="custom" style="--text-font-size:72px;--text-color:#e23d28"');
+    expect(html).not.toContain('data-text-block="title" data-text-layout="free"');
+    expect(html).not.toContain("--text-x:50%");
+  });
+
   it("lets explicit text flow override older whole-body free text layout in export", () => {
     const deck = parseMarkdownDeck(`# Skills
 

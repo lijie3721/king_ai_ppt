@@ -377,11 +377,11 @@ function renderTextBlocks(html: string, textLayout: SlideTextLayout, textFlow: S
     .join("");
   return {
     content: [
-      blocks.titleHtml && !textLayout.title ? renderTextBlock("title", blocks.titleHtml) : "",
+      blocks.titleHtml && !isFreeTextLayout(textLayout.title) ? renderTextBlock("title", blocks.titleHtml, textLayout.title) : "",
       contentBlocks ? `<div class="slide-text-flow slide-text-flow--${textFlow}">${contentBlocks}</div>` : ""
     ].join(""),
     free: [
-      blocks.titleHtml && textLayout.title ? renderTextBlock("title", blocks.titleHtml, textLayout.title) : "",
+      blocks.titleHtml && isFreeTextLayout(textLayout.title) ? renderTextBlock("title", blocks.titleHtml, textLayout.title) : "",
       freeBlocks,
       blocks.bodyHtml && textLayout.body && !bodyLayoutBlocksFlow ? renderTextBlock("body", blocks.bodyHtml, textLayout.body) : ""
     ].join("")

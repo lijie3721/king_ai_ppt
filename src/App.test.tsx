@@ -1351,6 +1351,19 @@ Intro
   });
 
   it("lets the selected slide title resize its line length from a right-side handle", async () => {
+    localStorage.setItem(
+      "ai-ppt:draft",
+      JSON.stringify({
+        markdown: "# AI Slides\n\nStart writing your story.",
+        themeId: "business-report",
+        assets: [],
+        imageLayouts: {},
+        slideCompositions: {},
+        textLayouts: {
+          "slide-1": { title: { x: 20, y: 25, mode: "free", width: 20 } }
+        }
+      })
+    );
     const root = createRoot(container);
 
     await act(async () => {
@@ -1358,19 +1371,9 @@ Intro
     });
 
     const canvas = getElement<HTMLElement>(".preview-pane .slide-canvas");
-    const title = getElement<HTMLElement>(".preview-pane .slide-text-block--title h1");
     Object.defineProperty(canvas, "getBoundingClientRect", {
       configurable: true,
       value: () => DOMRect.fromRect({ x: 0, y: 0, width: 1000, height: 500 })
-    });
-    Object.defineProperty(title, "getBoundingClientRect", {
-      configurable: true,
-      value: () => DOMRect.fromRect({ x: 100, y: 100, width: 200, height: 50 })
-    });
-
-    await act(async () => {
-      title.dispatchEvent(createPointerEvent("pointerdown", { clientX: 200, clientY: 125, pointerId: 21 }));
-      window.dispatchEvent(createPointerEvent("pointerup", { clientX: 200, clientY: 125, pointerId: 21 }));
     });
 
     const titleBlock = getElement<HTMLElement>(".preview-pane .slide-text-block--title");
@@ -1394,6 +1397,19 @@ Intro
   });
 
   it("keeps the left edge stable when text resize reaches width limits", async () => {
+    localStorage.setItem(
+      "ai-ppt:draft",
+      JSON.stringify({
+        markdown: "# AI Slides\n\nStart writing your story.",
+        themeId: "business-report",
+        assets: [],
+        imageLayouts: {},
+        slideCompositions: {},
+        textLayouts: {
+          "slide-1": { title: { x: 50, y: 25, mode: "free", width: 90 } }
+        }
+      })
+    );
     const root = createRoot(container);
 
     await act(async () => {
@@ -1401,19 +1417,9 @@ Intro
     });
 
     const canvas = getElement<HTMLElement>(".preview-pane .slide-canvas");
-    const title = getElement<HTMLElement>(".preview-pane .slide-text-block--title h1");
     Object.defineProperty(canvas, "getBoundingClientRect", {
       configurable: true,
       value: () => DOMRect.fromRect({ x: 0, y: 0, width: 1000, height: 500 })
-    });
-    Object.defineProperty(title, "getBoundingClientRect", {
-      configurable: true,
-      value: () => DOMRect.fromRect({ x: 50, y: 100, width: 900, height: 50 })
-    });
-
-    await act(async () => {
-      title.dispatchEvent(createPointerEvent("pointerdown", { clientX: 500, clientY: 125, pointerId: 31 }));
-      window.dispatchEvent(createPointerEvent("pointerup", { clientX: 500, clientY: 125, pointerId: 31 }));
     });
 
     const titleBlock = getElement<HTMLElement>(".preview-pane .slide-text-block--title");
@@ -1531,13 +1537,15 @@ Intro
 
     const titleBlock = getElement<HTMLElement>(".preview-pane .slide-text-block--title");
     expect(titleBlock.dataset.textStyle).toBe("custom");
+    expect(titleBlock.closest(".slide-content")).toBeTruthy();
+    expect(document.querySelector(".preview-pane .slide-text-layer [data-text-block='title']")).toBeNull();
     expect(titleBlock.style.getPropertyValue("--text-font-size")).toBe("92px");
     expect(titleBlock.style.getPropertyValue("--text-font-family")).toBe("YouSheTitleHei");
     expect(titleBlock.style.getPropertyValue("--text-color")).toBe("#e23d28");
     expect(titleBlock.style.getPropertyValue("--text-font-weight")).toBe("800");
     expect(titleBlock.style.getPropertyValue("--text-line-height")).toBe("1.1");
     expect(titleBlock.style.getPropertyValue("--text-letter-spacing")).toBe("0.5px");
-    expect(titleBlock.style.getPropertyValue("--text-w")).toBe("42%");
+    expect(titleBlock.style.getPropertyValue("--text-w")).toBe("");
 
     const styledTitle = getElement<HTMLElement>(".preview-pane .slide-text-block--title h1");
     await act(async () => {
@@ -1547,6 +1555,8 @@ Intro
     });
 
     const movedTitleBlock = getElement<HTMLElement>(".preview-pane .slide-text-block--title");
+    expect(movedTitleBlock.closest(".slide-text-layer")).toBeTruthy();
+    expect(movedTitleBlock.dataset.textLayout).toBe("free");
     expect(movedTitleBlock.style.getPropertyValue("--text-font-size")).toBe("92px");
     expect(movedTitleBlock.style.getPropertyValue("--text-font-family")).toBe("YouSheTitleHei");
     expect(movedTitleBlock.style.getPropertyValue("--text-color")).toBe("#e23d28");
@@ -1585,6 +1595,9 @@ Intro
     });
 
     const titleBlock = getElement<HTMLElement>(".preview-pane .slide-text-block--title");
+    expect(titleBlock.closest(".slide-content")).toBeTruthy();
+    expect(titleBlock.dataset.textLayout).toBeUndefined();
+    expect(document.querySelector(".preview-pane .slide-text-layer [data-text-block='title']")).toBeNull();
     expect(titleBlock.style.getPropertyValue("--text-font-size")).toBe("104px");
     expect(titleBlock.style.getPropertyValue("--text-color")).toBe("#e23d28");
   });

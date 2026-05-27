@@ -903,7 +903,7 @@ export function App() {
         ...existingLayout.style,
         ...patch
       });
-      const shouldKeepFreeLayout = isFreeTextLayout(savedLayout) || selectedTextBlock === "title" || selectedTextBlock === "body";
+      const shouldKeepFreeLayout = isFreeTextLayout(savedLayout);
       const nextLayout = shouldKeepFreeLayout ? { ...existingLayout, mode: "free" as const } : { x: 50, y: 50 };
       return {
         ...current,
@@ -2850,6 +2850,9 @@ function SlideCanvas({
     window.addEventListener("pointercancel", onWindowPointerUp, { passive: false });
   }
 
+  const titleFlowLayout = isFreeTextLayout(textLayout.title) ? undefined : (textLayout.title as TextBlockLayout | undefined);
+  const titleFreeLayout = isFreeTextLayout(textLayout.title) ? textLayout.title : undefined;
+
   return (
     <article
       className={`slide-canvas slide-canvas--${slide.layout} slide-composition--${composition}${logoClass}${presentingClass} ${editable ? "slide-canvas--editable" : ""}`}
@@ -2863,12 +2866,14 @@ function SlideCanvas({
         <img className={`slide-logo slide-logo--${brandLogoPosition}`} src={brandLogoAsset.dataUrl} alt={brandLogoAsset.name} />
       ) : null}
       <div className="slide-content">
-        {textBlocks.titleHtml && !textLayout.title && !(selectedTextBlockIds.length === 1 && selectedTextBlock === "title") ? (
+        {textBlocks.titleHtml && !titleFreeLayout ? (
           <div
             className="slide-text-block slide-text-block--title"
             data-text-block="title"
             data-text-selected={selectedTextBlockIds.includes("title") ? "true" : undefined}
+            data-text-style={titleFlowLayout?.style ? "custom" : undefined}
             dangerouslySetInnerHTML={{ __html: textBlocks.titleHtml }}
+            style={textStyleOnlyBlockStyle(titleFlowLayout)}
           />
         ) : null}
         {textBlocks.bodyBlocks.length > 0 && !hasLegacyBodyLayout ? (
@@ -2890,21 +2895,24 @@ function SlideCanvas({
           </div>
         ) : null}
       </div>
-      {textBlocks.titleHtml && textLayout.title ? (
+      {textBlocks.titleHtml && titleFreeLayout ? (
         <div className="slide-text-layer">
           <div
             className="slide-text-block slide-text-block--title"
             data-text-block="title"
             data-text-layout="free"
             data-text-selected={selectedTextBlockIds.includes("title") ? "true" : undefined}
-            data-text-style={textLayout.title.style ? "custom" : undefined}
-            style={textBlockStyle(textLayout.title, editable)}
+            data-text-style={titleFreeLayout.style ? "custom" : undefined}
+            style={textBlockStyle(titleFreeLayout, editable)}
           >
             <span className="slide-text-block-html" dangerouslySetInnerHTML={{ __html: textBlocks.titleHtml }} />
             {editable ? <span aria-label="Resize text line length" className="text-resize-handle" role="slider" /> : null}
           </div>
         </div>
-      ) : textBlocks.titleHtml && selectedTextBlockIds.length === 1 && selectedTextBlockIds.includes("title") && selectedTextLayout ? (
+      ) : textBlocks.titleHtml &&
+        selectedTextBlockIds.length === 1 &&
+        selectedTextBlockIds.includes("title") &&
+        isFreeTextLayout(selectedTextLayout) ? (
         <div className="slide-text-layer">
           <div
             className="slide-text-block slide-text-block--title"
@@ -3097,7 +3105,7 @@ function applyFrameLayout(frame: HTMLElement, layout: ImageLayout) {
 }
 
 function readTextBlockLayout(element: HTMLElement, slideRect: DOMRect, storedLayout?: TextBlockLayout): TextBlockLayout {
-  if (storedLayout && (isFreeTextLayout(storedLayout) || element.dataset.textBlock === "title" || element.dataset.textBlock === "body")) return storedLayout;
+  if (isFreeTextLayout(storedLayout)) return storedLayout;
   const rect = getTextBlockRect(element);
   const existingStyle = (storedLayout as TextBlockLayout | undefined)?.style;
   return normalizeTextBlockLayout({
