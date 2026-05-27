@@ -29,7 +29,7 @@ describe("deck beautify", () => {
       ],
       {},
       {},
-      { "slide-3": { body: { x: 50, y: 55, width: 44 } } }
+      { "slide-3": { body: { x: 50, y: 55, mode: "free", width: 44 } } }
     );
 
     expect(result.slideCompositions["slide-1"]).toBe("image-right");

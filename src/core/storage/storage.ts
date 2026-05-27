@@ -492,8 +492,8 @@ function parseTextLayoutMap(value: unknown): TextLayoutMap {
         return undefined;
       }
       const item = layout as Partial<TextLayoutMap[string]>;
-      const title = parseTextBlockLayout(item.title);
-      const body = parseTextBlockLayout(item.body);
+      const title = parseTextBlockLayout(item.title, true);
+      const body = parseTextBlockLayout(item.body, true);
       const blocks = parseTextBlockLayoutMap(item.blocks);
       if (!title && !body && !blocks) return undefined;
       return [slideId, { ...(title ? { title } : {}), ...(body ? { body } : {}), ...(blocks ? { blocks } : {}) }] as const;
@@ -525,17 +525,19 @@ function parseTextBlockLayoutMap(value: unknown) {
   return Object.keys(blocks).length > 0 ? blocks : undefined;
 }
 
-function parseTextBlockLayout(value: unknown) {
+function parseTextBlockLayout(value: unknown, forceFreePosition = false) {
   if (!value || typeof value !== "object" || Array.isArray(value)) return undefined;
-  const layout = value as { x?: unknown; y?: unknown; width?: unknown; style?: unknown };
+  const layout = value as { x?: unknown; y?: unknown; mode?: unknown; width?: unknown; style?: unknown };
   if (typeof layout.x !== "number" || typeof layout.y !== "number") return undefined;
   if (!Number.isFinite(layout.x) || !Number.isFinite(layout.y)) return undefined;
   if (layout.width !== undefined && (typeof layout.width !== "number" || !Number.isFinite(layout.width))) return undefined;
   const style = parseTextBlockStyle(layout.style);
   if (layout.style !== undefined && !style) return undefined;
+  const hasFreePosition = forceFreePosition || layout.mode === "free" || layout.style === undefined;
   return {
     x: layout.x,
     y: layout.y,
+    ...(hasFreePosition ? { mode: "free" as const } : {}),
     ...(layout.width === undefined ? {} : { width: layout.width }),
     ...(style ? { style } : {})
   };

@@ -42,6 +42,7 @@ describe("draft storage", () => {
           title: {
             x: 32,
             y: 28,
+            mode: "free",
             width: 46,
             style: { fontSize: 68, fontFamily: "serif", color: "#e23d28", bold: true, lineHeight: 1.2, letterSpacing: 1.5 }
           },
@@ -75,10 +76,11 @@ describe("draft storage", () => {
           title: {
             x: 32,
             y: 28,
+            mode: "free",
             width: 46,
             style: { fontSize: 68, fontFamily: "serif", color: "#e23d28", bold: true, lineHeight: 1.2, letterSpacing: 1.5 }
           },
-          body: { x: 54, y: 62, width: 32 }
+          body: { x: 54, y: 62, mode: "free", width: 32 }
         }
       },
       brandLogo: {
@@ -233,7 +235,7 @@ describe("draft storage", () => {
 
     expect(loadDraft().textLayouts).toEqual({
       "slide-1": {
-        title: { x: 30, y: 20 }
+        title: { x: 30, y: 20, mode: "free" }
       }
     });
   });
@@ -262,8 +264,8 @@ describe("draft storage", () => {
 
     expect(loadDraft().textLayouts).toEqual({
       "slide-1": {
-        title: { x: 30, y: 20, width: 52 },
-        body: { x: 54, y: 60, style: { fontSize: 28, color: "#67d3b0" } }
+        title: { x: 30, y: 20, mode: "free", width: 52 },
+        body: { x: 54, y: 60, mode: "free", style: { fontSize: 28, color: "#67d3b0" } }
       }
     });
   });

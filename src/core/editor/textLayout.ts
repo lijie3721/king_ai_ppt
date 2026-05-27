@@ -5,6 +5,7 @@ export function normalizeTextBlockLayout(layout: TextBlockLayout): TextBlockLayo
   return {
     x: roundLayoutValue(clamp(layout.x, 0, 100)),
     y: roundLayoutValue(clamp(layout.y, 0, 100)),
+    ...(layout.mode === "free" ? { mode: "free" as const } : {}),
     ...(layout.width === undefined ? {} : { width: roundLayoutValue(clamp(layout.width, 8, 100)) }),
     ...(style ? { style } : {})
   };

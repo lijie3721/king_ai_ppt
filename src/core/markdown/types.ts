@@ -55,6 +55,7 @@ export type ImageLayoutMap = Record<string, ImageLayout>;
 export interface TextBlockLayout {
   x: number;
   y: number;
+  mode?: "free";
   width?: number;
   style?: TextBlockStyle;
 }

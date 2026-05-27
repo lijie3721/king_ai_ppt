@@ -368,11 +368,11 @@ function renderTextBlocks(html: string, textLayout: SlideTextLayout, textFlow: S
   const bodyLayoutBlocksFlow = textFlow !== "auto";
   const hasLegacyBodyLayout = Boolean(textLayout.body && !bodyLayoutBlocksFlow);
   const contentBlocks = blocks.bodyBlocks
-    .filter((block) => !hasLegacyBodyLayout && !textLayout.blocks?.[block.id])
-    .map((block) => renderTextBlock(block.id, block.html, undefined, "body", ` slide-text-block--content slide-text-block--${block.kind}`))
+    .filter((block) => !hasLegacyBodyLayout && !isFreeTextLayout(textLayout.blocks?.[block.id]))
+    .map((block) => renderTextBlock(block.id, block.html, textLayout.blocks?.[block.id], "body", ` slide-text-block--content slide-text-block--${block.kind}`))
     .join("");
   const freeBlocks = blocks.bodyBlocks
-    .filter((block) => Boolean(textLayout.blocks?.[block.id]))
+    .filter((block) => isFreeTextLayout(textLayout.blocks?.[block.id]))
     .map((block) => renderTextBlock(block.id, block.html, textLayout.blocks?.[block.id], "body", ` slide-text-block--${block.kind}`))
     .join("");
   return {
@@ -390,15 +390,17 @@ function renderTextBlocks(html: string, textLayout: SlideTextLayout, textFlow: S
 
 function renderTextBlock(block: string, html: string, layout?: TextBlockLayout, classBlock: "title" | "body" = block === "title" ? "title" : "body", extraClass = ""): string {
   const styleAttrs = layout ? renderTextBlockStyle(layout) : "";
-  const layoutAttrs = layout ? ` data-text-layout="free"${layout.style ? ` data-text-style="custom"` : ""} style="${styleAttrs}"` : "";
+  const layoutAttrs = layout
+    ? `${isFreeTextLayout(layout) ? ` data-text-layout="free"` : ""}${layout.style ? ` data-text-style="custom"` : ""} style="${styleAttrs}"`
+    : "";
   return `<div class="slide-text-block slide-text-block--${classBlock}${extraClass}" data-text-block="${block}"${layoutAttrs}>${html}</div>`;
 }
 
 function renderTextBlockStyle(layout: TextBlockLayout): string {
   return [
-    `--text-x:${layout.x}%`,
-    `--text-y:${layout.y}%`,
-    layout.width === undefined ? "" : `--text-w:${layout.width}%`,
+    isFreeTextLayout(layout) ? `--text-x:${layout.x}%` : "",
+    isFreeTextLayout(layout) ? `--text-y:${layout.y}%` : "",
+    isFreeTextLayout(layout) && layout.width !== undefined ? `--text-w:${layout.width}%` : "",
     layout.style?.fontSize === undefined ? "" : `--text-font-size:${layout.style.fontSize}px`,
     layout.style?.fontFamily === undefined ? "" : `--text-font-family:${layout.style.fontFamily}`,
     layout.style?.color === undefined ? "" : `--text-color:${layout.style.color}`,
@@ -409,6 +411,10 @@ function renderTextBlockStyle(layout: TextBlockLayout): string {
   ]
     .filter(Boolean)
     .join(";");
+}
+
+function isFreeTextLayout(layout: TextBlockLayout | undefined): layout is TextBlockLayout {
+  return layout?.mode === "free";
 }
 
 const runtimeScript = `

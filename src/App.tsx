@@ -800,11 +800,12 @@ export function App() {
   }
 
   function updateTextLayout(block: string, layout: TextBlockLayout) {
+    const freeLayout = normalizeTextBlockLayout({ ...layout, mode: "free" });
     commitDraft((current) => ({
       ...current,
       textLayouts: {
         ...current.textLayouts,
-        [currentSlide.id]: setTextLayoutForBlock(current.textLayouts[currentSlide.id], block, normalizeTextBlockLayout(layout))
+        [currentSlide.id]: setTextLayoutForBlock(current.textLayouts[currentSlide.id], block, freeLayout)
       }
     }));
     setStatus("Text layout saved");
@@ -818,7 +819,7 @@ export function App() {
         textLayouts: {
           ...current.textLayouts,
           [currentSlide.id]: Object.entries(layouts).reduce(
-            (slideLayout, [block, layout]) => setTextLayoutForBlock(slideLayout, block, normalizeTextBlockLayout(layout)),
+            (slideLayout, [block, layout]) => setTextLayoutForBlock(slideLayout, block, normalizeTextBlockLayout({ ...layout, mode: "free" })),
             currentSlideLayout ?? {}
           )
         }
@@ -895,13 +896,15 @@ export function App() {
     if (!selectedTextBlock) return;
     commitDraft((current) => {
       const currentSlideLayout = current.textLayouts[currentSlide.id] ?? {};
-      const existingLayout =
-        getTextLayoutForBlock(currentSlideLayout, selectedTextBlock) ?? (selectedTextLayout ? normalizeTextBlockLayout(selectedTextLayout) : undefined);
+      const savedLayout = getTextLayoutForBlock(currentSlideLayout, selectedTextBlock);
+      const existingLayout = savedLayout ?? (selectedTextLayout ? normalizeTextBlockLayout(selectedTextLayout) : undefined);
       if (!existingLayout) return current;
       const nextStyle = cleanTextStyle({
         ...existingLayout.style,
         ...patch
       });
+      const shouldKeepFreeLayout = isFreeTextLayout(savedLayout) || selectedTextBlock === "title" || selectedTextBlock === "body";
+      const nextLayout = shouldKeepFreeLayout ? { ...existingLayout, mode: "free" as const } : { x: 50, y: 50 };
       return {
         ...current,
         textLayouts: {
@@ -910,7 +913,7 @@ export function App() {
             currentSlideLayout,
             selectedTextBlock,
             normalizeTextBlockLayout({
-              ...existingLayout,
+              ...nextLayout,
               ...(nextStyle ? { style: nextStyle } : { style: undefined })
             })
           )
@@ -2871,16 +2874,18 @@ function SlideCanvas({
         {textBlocks.bodyBlocks.length > 0 && !hasLegacyBodyLayout ? (
           <div className={`slide-text-flow slide-text-flow--${textFlow}`}>
             {textBlocks.bodyBlocks.map((block) =>
-              !textLayout.blocks?.[block.id] ? (
-                <div
-                  className={`slide-text-block slide-text-block--body slide-text-block--content slide-text-block--${block.kind}`}
-                  data-text-block={block.id}
-                  data-text-selected={selectedTextBlockIds.includes(block.id) ? "true" : undefined}
-                  data-text-block-kind={block.kind}
-                  dangerouslySetInnerHTML={{ __html: block.html }}
-                  key={block.id}
-                />
-              ) : null
+                !isFreeTextLayout(textLayout.blocks?.[block.id]) ? (
+                  <div
+                    className={`slide-text-block slide-text-block--body slide-text-block--content slide-text-block--${block.kind}`}
+                    data-text-block={block.id}
+                    data-text-selected={selectedTextBlockIds.includes(block.id) ? "true" : undefined}
+                    data-text-style={textLayout.blocks?.[block.id]?.style ? "custom" : undefined}
+                    data-text-block-kind={block.kind}
+                    dangerouslySetInnerHTML={{ __html: block.html }}
+                    key={block.id}
+                    style={textStyleOnlyBlockStyle(textLayout.blocks?.[block.id])}
+                  />
+                ) : null
             )}
           </div>
         ) : null}
@@ -2918,7 +2923,7 @@ function SlideCanvas({
         <div className="slide-text-layer">
           {textBlocks.bodyBlocks.map((block) => {
             const layout = textLayout.blocks?.[block.id];
-            if (!layout) {
+            if (!isFreeTextLayout(layout)) {
               if (hasLegacyBodyLayout || (selectedTextBlockIds.length === 1 && selectedTextBlock === block.id)) return null;
               return null;
             }
@@ -3004,6 +3009,7 @@ function applyInteractionLayout(interaction: CanvasInteraction) {
       const nextLayout = normalizeTextBlockLayout({
         x: leftEdge + width / 2,
         y: interaction.baseLayout.y,
+        mode: "free",
         width,
         style: interaction.baseLayout.style
       });
@@ -3016,6 +3022,7 @@ function applyInteractionLayout(interaction: CanvasInteraction) {
     const nextLayout = normalizeTextBlockLayout({
       x: interaction.baseLayout.x + deltaX,
       y: interaction.baseLayout.y + deltaY,
+      mode: "free",
       width: interaction.baseLayout.width,
       style: interaction.baseLayout.style
     });
@@ -3027,6 +3034,7 @@ function applyInteractionLayout(interaction: CanvasInteraction) {
           const nextGroupLayout = normalizeTextBlockLayout({
             x: baseLayout.x + deltaX,
             y: baseLayout.y + deltaY,
+            mode: "free",
             width: baseLayout.width,
             style: baseLayout.style
           });
@@ -3089,13 +3097,14 @@ function applyFrameLayout(frame: HTMLElement, layout: ImageLayout) {
 }
 
 function readTextBlockLayout(element: HTMLElement, slideRect: DOMRect, storedLayout?: TextBlockLayout): TextBlockLayout {
-  if (storedLayout) return storedLayout;
+  if (storedLayout && (isFreeTextLayout(storedLayout) || element.dataset.textBlock === "title" || element.dataset.textBlock === "body")) return storedLayout;
   const rect = getTextBlockRect(element);
+  const existingStyle = (storedLayout as TextBlockLayout | undefined)?.style;
   return normalizeTextBlockLayout({
     x: ((rect.left + rect.width / 2 - slideRect.left) / slideRect.width) * 100,
     y: ((rect.top + rect.height / 2 - slideRect.top) / slideRect.height) * 100,
     width: (rect.width / slideRect.width) * 100,
-    style: readRenderedTextStyle(element)
+    style: existingStyle ?? readRenderedTextStyle(element)
   });
 }
 
@@ -3129,6 +3138,7 @@ function getTextBlockRect(element: HTMLElement): DOMRect {
 
 function applyTextBlockLayout(element: HTMLElement, layout: TextBlockLayout) {
   element.dataset.textLayout = "free";
+  layout.mode = "free";
   element.style.setProperty("--text-x", `${layout.x}%`);
   element.style.setProperty("--text-y", `${layout.y}%`);
   if (layout.width !== undefined) {
@@ -3232,6 +3242,10 @@ function textBlockStyle(layout?: TextBlockLayout, isEditable = false): React.CSS
     ...textStyleProperties(layout.style),
     ...(isEditable ? { pointerEvents: "none" } : {})
   } as React.CSSProperties;
+}
+
+function textStyleOnlyBlockStyle(layout?: TextBlockLayout): React.CSSProperties | undefined {
+  return textStyleProperties(layout?.style) as React.CSSProperties;
 }
 
 function applyTextStyleProperties(element: HTMLElement, style: TextBlockStyle | undefined) {
@@ -3341,6 +3355,10 @@ function getTextLayoutForBlock(textLayout: SlideTextLayout | undefined, block: s
   if (!textLayout) return undefined;
   if (block === "title" || block === "body") return textLayout[block];
   return textLayout.blocks?.[block];
+}
+
+function isFreeTextLayout(layout: TextBlockLayout | undefined): layout is TextBlockLayout {
+  return layout?.mode === "free";
 }
 
 function setTextLayoutForBlock(textLayout: SlideTextLayout | undefined, block: string, layout: TextBlockLayout): SlideTextLayout {

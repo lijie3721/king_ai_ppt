@@ -149,10 +149,11 @@ Intro
         title: {
           x: 30,
           y: 24,
+          mode: "free",
           width: 48,
           style: { fontSize: 68, fontFamily: "serif", color: "#e23d28", bold: true, lineHeight: 1.2, letterSpacing: 1.5 }
         },
-        body: { x: 58, y: 60, width: 32 }
+        body: { x: 58, y: 60, mode: "free", width: 32 }
       }
     });
 
@@ -188,7 +189,7 @@ Intro
         "slide-1": {
           body: { x: 58, y: 60, width: 32 },
           blocks: {
-            "block-1": { x: 30, y: 40, width: 24 }
+            "block-1": { x: 30, y: 40, mode: "free", width: 24 }
           }
         }
       }

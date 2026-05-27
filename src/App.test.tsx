@@ -1762,7 +1762,9 @@ Intro
     const styledBlock = getElement<HTMLElement>(".preview-pane [data-text-block='block-1']");
     const siblingBlock = getElement<HTMLElement>(".preview-pane [data-text-block='block-2']");
     expect(styledBlock.style.getPropertyValue("--text-color")).toBe("#e23d28");
-    expect(styledBlock.closest(".slide-text-layer")).toBeTruthy();
+    expect(styledBlock.closest(".slide-text-flow")).toBeTruthy();
+    expect(styledBlock.dataset.textLayout).toBeUndefined();
+    expect(document.querySelector(".preview-pane .slide-text-layer [data-text-block='block-1']")).toBeNull();
     expect(siblingBlock.closest(".slide-text-flow")).toBeTruthy();
     expect(siblingBlock.style.getPropertyValue("--text-color")).toBe("");
   });
@@ -1786,7 +1788,7 @@ Intro
           "slide-1": {
             body: { x: 48, y: 58, width: 72 },
             blocks: {
-              "block-1": { x: 30, y: 40, width: 24 }
+              "block-1": { x: 30, y: 40, mode: "free", width: 24 }
             }
           }
         }
@@ -2093,8 +2095,8 @@ Intro
         textLayouts: {
           "slide-1": {
             blocks: {
-              "block-1": { x: 21, y: 36, width: 22 },
-              "block-2": { x: 54, y: 52, width: 24 }
+              "block-1": { x: 21, y: 36, mode: "free", width: 22 },
+              "block-2": { x: 54, y: 52, mode: "free", width: 24 }
             }
           }
         }

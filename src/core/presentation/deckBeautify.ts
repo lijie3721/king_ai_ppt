@@ -100,7 +100,9 @@ function stripMarkdownSyntax(markdown: string) {
 }
 
 function hasManualTextLayout(layout: TextLayoutMap[string] | undefined) {
-  return Boolean(layout?.title || layout?.body || Object.keys(layout?.blocks ?? {}).length > 0);
+  return Boolean(
+    layout?.title?.mode === "free" || layout?.body?.mode === "free" || Object.values(layout?.blocks ?? {}).some((block) => block.mode === "free")
+  );
 }
 
 function buildBeautifySummary(slideCount: number, compositionChanges: number, textFlowChanges: number) {
