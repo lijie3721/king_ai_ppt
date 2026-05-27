@@ -449,7 +449,8 @@ textarea {
 }
 
 .preview-toolbar-group--composition,
-.preview-toolbar-group--logo {
+.preview-toolbar-group--logo,
+.preview-toolbar-group--health {
   padding-left: 10px;
   border-left: 1px solid rgba(25, 32, 31, 0.12);
   color: #5f6965;
@@ -457,7 +458,8 @@ textarea {
 }
 
 .preview-toolbar-group--composition > span,
-.preview-toolbar-group--logo > span {
+.preview-toolbar-group--logo > span,
+.preview-toolbar-group--health > span {
   white-space: nowrap;
   font-weight: 800;
   color: #303936;

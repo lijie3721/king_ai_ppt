@@ -52,7 +52,10 @@ import { parseMarkdownDeck } from "./core/markdown/deck";
 import { getAvailableSlideCompositions, getSlideComposition, isSlideComposition, suggestAlternativeSlideCompositions } from "./core/presentation/slideComposition";
 import { beautifyDeckLayout } from "./core/presentation/deckBeautify";
 import { annotateRevealItems, countRevealItems } from "./core/presentation/reveal";
+import { createSlideAutoLayoutPatch } from "./core/presentation/slideAutoLayout";
 import { splitSlideTextBlocks } from "./core/presentation/textBlocks";
+import { analyzeSlideHealth } from "./core/presentation/slideHealth";
+import { toSlideRect, type SlideMeasure, type SlideMeasuredElement } from "./core/presentation/slideMeasure";
 import { deleteAssets, saveAsset, saveAssets } from "./core/storage/assetStore";
 import {
   buildProjectExport,
@@ -720,6 +723,75 @@ export function App() {
     setStatus(`AI 美化完成：${result.summary.join("，")}。`);
   }
 
+  function handleCheckCurrentSlide() {
+    if (isPresenting) {
+      setStatus("演讲模式中不能检查，退出后再调整。");
+      return;
+    }
+    const measure = collectCurrentSlideMeasure();
+    if (!measure) {
+      setStatus("暂时无法检查本页，请稍后再试。");
+      return;
+    }
+    const health = analyzeSlideHealth(measure);
+    setStatus(health.summary);
+  }
+
+  function handleBeautifyCurrentSlide() {
+    if (isPresenting) {
+      setStatus("演讲模式中不能美化，退出后再调整。");
+      return;
+    }
+    const measure = collectCurrentSlideMeasure();
+    if (!measure) {
+      setStatus("暂时无法美化本页，请稍后再试。");
+      return;
+    }
+    const health = analyzeSlideHealth(measure);
+    const patch = createSlideAutoLayoutPatch({
+      slide: currentSlide,
+      health,
+      currentComposition,
+      currentTextFlow,
+      currentTextLayout: draft.textLayouts[currentSlide.id]
+    });
+    if (!patch.changed) {
+      setStatus(health.isHealthy ? "本页状态良好，无需自动修复。" : "已检查本页，暂无可自动修复的问题。");
+      return;
+    }
+    commitDraft((current) => {
+      const slideCompositions = { ...current.slideCompositions };
+      if (patch.slideCompositions?.[currentSlide.id]) {
+        slideCompositions[currentSlide.id] = patch.slideCompositions[currentSlide.id];
+      }
+
+      const slideTextFlows = { ...current.slideTextFlows };
+      const nextTextFlow = patch.slideTextFlows?.[currentSlide.id];
+      if (nextTextFlow === "auto") {
+        delete slideTextFlows[currentSlide.id];
+      } else if (nextTextFlow) {
+        slideTextFlows[currentSlide.id] = nextTextFlow;
+      }
+
+      const textLayouts = patch.textLayout
+        ? {
+            ...current.textLayouts,
+            [currentSlide.id]: patch.textLayout
+          }
+        : current.textLayouts;
+
+      return {
+        ...current,
+        slideCompositions,
+        slideTextFlows,
+        textLayouts
+      };
+    });
+    clearTextSelection();
+    setSelectedImageAssetIds([]);
+    setStatus(patch.summary);
+  }
+
   function handleExport() {
     const html = createStandaloneHtml(
       deck,
@@ -880,6 +952,50 @@ export function App() {
       updateTextSelection(Object.keys(alignedLayouts), selectedTextBlock, alignedLayouts[selectedTextBlock ?? ""]);
       setStatus(`已对齐 ${Object.keys(alignedLayouts).length} 个文本框`);
     }
+  }
+
+  function collectCurrentSlideMeasure(): SlideMeasure | undefined {
+    const canvas = previewStageRef.current?.querySelector<HTMLElement>(".slide-canvas");
+    if (!canvas) return undefined;
+    const canvasRect = canvas.getBoundingClientRect();
+    const elements: SlideMeasuredElement[] = [];
+
+    const titleBlock = canvas.querySelector<HTMLElement>(".slide-text-block[data-text-block='title']");
+    const titleContent = titleBlock?.querySelector<HTMLElement>("h1, h2, h3") ?? titleBlock;
+    if (titleBlock && titleContent) {
+      elements.push({
+        id: "title",
+        kind: "title",
+        rect: toSlideRect(titleContent.getBoundingClientRect()),
+        isFree: titleBlock.dataset.textLayout === "free"
+      });
+    }
+
+    canvas.querySelectorAll<HTMLElement>(".slide-text-block[data-text-block]").forEach((block) => {
+      const blockId = block.dataset.textBlock;
+      if (!blockId || blockId === "title") return;
+      const rect = block.getBoundingClientRect();
+      elements.push({
+        id: blockId,
+        kind: "text",
+        rect: toSlideRect(rect),
+        isFree: block.dataset.textLayout === "free"
+      });
+    });
+
+    canvas.querySelectorAll<HTMLElement>(".slide-image-frame[data-asset-id]").forEach((frame) => {
+      elements.push({
+        id: frame.dataset.assetId ?? "image",
+        kind: "image",
+        rect: toSlideRect(frame.getBoundingClientRect()),
+        isFree: frame.dataset.imageLayout === "free"
+      });
+    });
+
+    return {
+      canvas: toSlideRect(canvasRect),
+      elements
+    };
   }
 
   function clearTextSelection() {
@@ -1512,6 +1628,17 @@ export function App() {
                       {textFlowLabels[mode]}
                     </button>
                   ))}
+                </div>
+
+                <div className="preview-toolbar-group preview-toolbar-group--health" aria-label="Slide health">
+                  <Sparkles size={16} />
+                  <span>本页</span>
+                  <button className="composition-pill" data-testid="check-current-slide" onClick={handleCheckCurrentSlide} type="button">
+                    检查
+                  </button>
+                  <button className="composition-pill" data-testid="beautify-current-slide" onClick={handleBeautifyCurrentSlide} type="button">
+                    美化
+                  </button>
                 </div>
 
                 <div className="preview-toolbar-group preview-toolbar-group--logo" aria-label="Deck logo">

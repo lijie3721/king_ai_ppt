@@ -613,6 +613,72 @@ Intro
     expect(getElement(".preview-pane .slide-text-flow").className).toContain("slide-text-flow--auto");
   });
 
+  it("checks and beautifies the current slide with undo support", async () => {
+    localStorage.setItem(
+      "ai-ppt:draft",
+      JSON.stringify({
+        markdown: `# 当前挑战
+
+- 课堂材料分散
+- 学生注意力难持续
+- 课后复盘缺少结构
+- 教学成果难展示`,
+        themeId: "business-report",
+        assets: [],
+        imageLayouts: {},
+        slideCompositions: {},
+        slideTextFlows: {},
+        textLayouts: {}
+      })
+    );
+    const root = createRoot(container);
+
+    await act(async () => {
+      root.render(<App />);
+    });
+
+    function mockCrowdedSlideRects() {
+      const canvas = getElement<HTMLElement>(".preview-pane .slide-canvas");
+      const title = getElement<HTMLElement>(".preview-pane .slide-text-block--title h1");
+      const body = getElement<HTMLElement>(".preview-pane [data-text-block='block-1']");
+      Object.defineProperty(canvas, "getBoundingClientRect", {
+        configurable: true,
+        value: () => DOMRect.fromRect({ x: 0, y: 0, width: 1000, height: 562.5 })
+      });
+      Object.defineProperty(title, "getBoundingClientRect", {
+        configurable: true,
+        value: () => DOMRect.fromRect({ x: -10, y: 80, width: 620, height: 220 })
+      });
+      Object.defineProperty(body, "getBoundingClientRect", {
+        configurable: true,
+        value: () => DOMRect.fromRect({ x: 120, y: 190, width: 520, height: 160 })
+      });
+    }
+    mockCrowdedSlideRects();
+
+    await act(async () => {
+      getElement<HTMLButtonElement>("[data-testid='check-current-slide']").click();
+    });
+
+    expect(getElement(".status").textContent).toContain("发现");
+    expect(getElement(".status").textContent).toContain("标题超出安全区");
+    mockCrowdedSlideRects();
+
+    await act(async () => {
+      getElement<HTMLButtonElement>("[data-testid='beautify-current-slide']").click();
+    });
+
+    expect(getElement(".status").textContent).toContain("已美化本页");
+    expect(getElement(".preview-pane .slide-text-flow").className).toContain("slide-text-flow--two");
+    expect(getElement<HTMLElement>(".preview-pane .slide-text-block--title").style.getPropertyValue("--text-font-size")).toBe("56px");
+
+    await act(async () => {
+      getElement<HTMLButtonElement>("[data-testid='undo-edit']").click();
+    });
+
+    expect(getElement(".preview-pane .slide-text-flow").className).toContain("slide-text-flow--auto");
+  });
+
   it("shows a friendly Chinese message when copy optimization fails", async () => {
     const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(
       new Response(JSON.stringify({ error: "还没有配置 DeepSeek API Key，请先在 .env 里填写 DEEPSEEK_API_KEY。" }), {
