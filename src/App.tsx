@@ -756,7 +756,7 @@ export function App() {
       currentTextLayout: draft.textLayouts[currentSlide.id]
     });
     if (!patch.changed) {
-      setStatus(health.isHealthy ? "本页状态良好，无需自动修复。" : "已检查本页，暂无可自动修复的问题。");
+      setStatus(patch.summary);
       return;
     }
     commitDraft((current) => {
@@ -963,39 +963,55 @@ export function App() {
     const titleBlock = canvas.querySelector<HTMLElement>(".slide-text-block[data-text-block='title']");
     const titleContent = titleBlock?.querySelector<HTMLElement>("h1, h2, h3") ?? titleBlock;
     if (titleBlock && titleContent) {
+      const layout = titleBlock.dataset.textLayout === "free" ? "free" : "flow";
       elements.push({
         id: "title",
         kind: "title",
         rect: toSlideRect(titleContent.getBoundingClientRect()),
-        isFree: titleBlock.dataset.textLayout === "free"
+        isFree: layout === "free",
+        layout
       });
     }
 
     canvas.querySelectorAll<HTMLElement>(".slide-text-block[data-text-block]").forEach((block) => {
       const blockId = block.dataset.textBlock;
       if (!blockId || blockId === "title") return;
-      const rect = block.getBoundingClientRect();
+      const layout = block.dataset.textLayout === "free" ? "free" : "flow";
+      const content = getMeasuredTextContent(block);
+      const rect = content.getBoundingClientRect();
       elements.push({
         id: blockId,
         kind: "text",
         rect: toSlideRect(rect),
-        isFree: block.dataset.textLayout === "free"
+        isFree: layout === "free",
+        layout
       });
     });
 
     canvas.querySelectorAll<HTMLElement>(".slide-image-frame[data-asset-id]").forEach((frame) => {
+      const layout = frame.dataset.imageLayout === "free" ? "free" : "flow";
       elements.push({
         id: frame.dataset.assetId ?? "image",
         kind: "image",
         rect: toSlideRect(frame.getBoundingClientRect()),
-        isFree: frame.dataset.imageLayout === "free"
+        isFree: layout === "free",
+        layout
       });
     });
 
     return {
       canvas: toSlideRect(canvasRect),
-      elements
+      elements,
+      composition: currentComposition,
+      textFlow: currentTextFlow
     };
+  }
+
+  function getMeasuredTextContent(block: HTMLElement) {
+    const content = block.querySelector<HTMLElement>(".slide-text-block-html, li, p, h1, h2, h3");
+    if (!content) return block;
+    const contentRect = content.getBoundingClientRect();
+    return contentRect.width > 0 && contentRect.height > 0 ? content : block;
   }
 
   function clearTextSelection() {

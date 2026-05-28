@@ -647,7 +647,7 @@ Intro
       });
       Object.defineProperty(title, "getBoundingClientRect", {
         configurable: true,
-        value: () => DOMRect.fromRect({ x: -10, y: 80, width: 620, height: 220 })
+        value: () => DOMRect.fromRect({ x: -30, y: 80, width: 620, height: 220 })
       });
       Object.defineProperty(body, "getBoundingClientRect", {
         configurable: true,
@@ -661,7 +661,7 @@ Intro
     });
 
     expect(getElement(".status").textContent).toContain("发现");
-    expect(getElement(".status").textContent).toContain("标题超出安全区");
+    expect(getElement(".status").textContent).toContain("标题超出页面");
     mockCrowdedSlideRects();
 
     await act(async () => {
@@ -677,6 +677,72 @@ Intro
     });
 
     expect(getElement(".preview-pane .slide-text-flow").className).toContain("slide-text-flow--auto");
+  });
+
+  it("does not misreport a healthy grid slide and explains no-op beautify", async () => {
+    localStorage.setItem(
+      "ai-ppt:draft",
+      JSON.stringify({
+        markdown: `# 当前挑战
+
+- 课堂材料分散
+- 学生注意力难持续
+- 课后复盘缺少结构
+- 教学成果难展示
+- 老师备课时间紧
+- 互动反馈不及时
+- 内容复用成本高`,
+        themeId: "business-report",
+        assets: [],
+        imageLayouts: {},
+        slideCompositions: {},
+        slideTextFlows: { "slide-1": "grid" },
+        textLayouts: {}
+      })
+    );
+    const root = createRoot(container);
+
+    await act(async () => {
+      root.render(<App />);
+    });
+
+    function mockHealthyGridRects() {
+      const canvas = getElement<HTMLElement>(".preview-pane .slide-canvas");
+      const title = getElement<HTMLElement>(".preview-pane .slide-text-block--title h1");
+      Object.defineProperty(canvas, "getBoundingClientRect", {
+        configurable: true,
+        value: () => DOMRect.fromRect({ x: 0, y: 0, width: 1000, height: 562.5 })
+      });
+      Object.defineProperty(title, "getBoundingClientRect", {
+        configurable: true,
+        value: () => DOMRect.fromRect({ x: 36, y: 56, width: 410, height: 86 })
+      });
+      Array.from(container.querySelectorAll<HTMLElement>(".preview-pane .slide-text-block[data-text-block]:not([data-text-block='title'])")).forEach(
+        (block, index) => {
+          const col = index % 3;
+          const row = Math.floor(index / 3);
+          Object.defineProperty(block, "getBoundingClientRect", {
+            configurable: true,
+            value: () => DOMRect.fromRect({ x: 64 + col * 316, y: 168 + row * 126, width: 250, height: 72 })
+          });
+        }
+      );
+    }
+    mockHealthyGridRects();
+
+    await act(async () => {
+      getElement<HTMLButtonElement>("[data-testid='check-current-slide']").click();
+    });
+
+    expect(getElement(".status").textContent).toBe("本页状态良好");
+    mockHealthyGridRects();
+
+    await act(async () => {
+      getElement<HTMLButtonElement>("[data-testid='beautify-current-slide']").click();
+    });
+
+    expect(getElement(".status").textContent).toBe("本页已经接近推荐布局");
+    expect(getElement(".preview-pane .slide-text-flow").className).toContain("slide-text-flow--grid");
   });
 
   it("shows a friendly Chinese message when copy optimization fails", async () => {

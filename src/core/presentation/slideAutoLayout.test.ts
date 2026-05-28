@@ -37,8 +37,8 @@ describe("slide auto layout", () => {
       slide,
       health: {
         isHealthy: false,
-        summary: "发现 1 个问题：标题超出安全区",
-        issues: [{ type: "title-overflow", message: "标题超出安全区", elementIds: ["title"], severity: "danger" }]
+        summary: "发现 1 个问题：标题超出页面",
+        issues: [{ type: "title-overflow", message: "标题超出页面", elementIds: ["title"], severity: "danger" }]
       },
       currentComposition: "left-heavy",
       currentTextFlow: "two",
@@ -46,5 +46,23 @@ describe("slide auto layout", () => {
     });
 
     expect(patch.textLayout).toBeUndefined();
+  });
+
+  it("keeps a healthy grid page unchanged and returns explicit feedback", () => {
+    const gridSlide: Slide = {
+      ...slide,
+      markdown: "# 当前挑战\n\n- A\n- B\n- C\n- D\n- E\n- F\n- G"
+    };
+
+    const patch = createSlideAutoLayoutPatch({
+      slide: gridSlide,
+      health: { isHealthy: true, summary: "本页状态良好", issues: [] },
+      currentComposition: "center-stage",
+      currentTextFlow: "grid",
+      currentTextLayout: {}
+    });
+
+    expect(patch.changed).toBe(false);
+    expect(patch.summary).toBe("本页已经接近推荐布局");
   });
 });

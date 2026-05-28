@@ -1,3 +1,5 @@
+import type { SlideComposition, SlideTextFlowMode } from "../markdown/types";
+
 export interface SlideRect {
   left: number;
   top: number;
@@ -14,11 +16,14 @@ export interface SlideMeasuredElement {
   kind: SlideMeasuredElementKind;
   rect: SlideRect;
   isFree?: boolean;
+  layout?: "flow" | "free";
 }
 
 export interface SlideMeasure {
   canvas: SlideRect;
   elements: SlideMeasuredElement[];
+  composition?: SlideComposition;
+  textFlow?: SlideTextFlowMode;
 }
 
 export function toSlideRect(rect: DOMRect): SlideRect {

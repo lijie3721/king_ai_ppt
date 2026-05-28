@@ -52,7 +52,7 @@ function chooseCurrentSlideComposition(
   health: SlideHealthResult,
   currentComposition: SlideComposition | undefined
 ): SlideComposition | undefined {
-  const hasOverlap = health.issues.some((issue) => issue.type === "element-overlap");
+  const hasOverlap = health.issues.some((issue) => issue.type === "element-overlap" && issue.severity === "danger");
   const hasImages = slide.imageAssetIds.length > 0 || slide.layout === "image-hero";
   const desired = hasImages ? "image-right" : hasOverlap ? "left-heavy" : undefined;
   if (!desired || desired === currentComposition) return undefined;
@@ -65,7 +65,9 @@ function chooseCurrentSlideTextFlow(
   currentTextFlow: SlideTextFlowMode | undefined
 ): SlideTextFlowMode | undefined {
   const bulletCount = countListItems(slide.markdown);
-  const hasCrowding = health.issues.some((issue) => issue.type === "crowded-slide" || issue.type === "element-overlap");
+  const hasCrowding = health.issues.some(
+    (issue) => issue.type === "crowded-slide" || (issue.type === "element-overlap" && issue.severity === "danger")
+  );
   const desired: SlideTextFlowMode = bulletCount >= 6 ? "grid" : bulletCount >= 3 || hasCrowding ? "two" : "auto";
   if (desired === "auto") return currentTextFlow && currentTextFlow !== "auto" ? "auto" : undefined;
   return desired === currentTextFlow ? undefined : desired;

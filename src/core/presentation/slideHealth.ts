@@ -15,31 +15,32 @@ export interface SlideHealthResult {
   summary: string;
 }
 
-const safeInsetRatio = 0.045;
-const minOverlapArea = 120;
+const pageOverflowToleranceRatio = 0.012;
+const minOverlapArea = 400;
+const minOverlapRatio = 0.18;
 
 export function analyzeSlideHealth(measure: SlideMeasure): SlideHealthResult {
   const issues: SlideHealthIssue[] = [];
-  const safeArea = insetRect(measure.canvas, safeInsetRatio);
+  const pageBounds = expandRect(measure.canvas, pageOverflowToleranceRatio);
   const visibleElements = measure.elements.filter((element) => element.rect.width > 0 && element.rect.height > 0);
   const title = visibleElements.find((element) => element.kind === "title");
 
-  if (title && isOutside(title.rect, safeArea)) {
+  if (title && isOutside(title.rect, pageBounds)) {
     issues.push({
       type: "title-overflow",
-      message: "标题超出安全区",
+      message: "标题超出页面",
       elementIds: [title.id],
       severity: "danger"
     });
   }
 
   for (const element of visibleElements) {
-    if (element.kind !== "title" && isOutside(element.rect, safeArea)) {
+    if (element.kind !== "title" && isOutside(element.rect, pageBounds)) {
       issues.push({
         type: "element-overflow",
-        message: element.kind === "image" ? "图片靠近页面边界" : "正文靠近页面边界",
+        message: element.kind === "image" ? "图片超出页面" : "正文超出页面",
         elementIds: [element.id],
-        severity: "warning"
+        severity: "danger"
       });
     }
   }
@@ -48,8 +49,8 @@ export function analyzeSlideHealth(measure: SlideMeasure): SlideHealthResult {
     for (let nextIndex = index + 1; nextIndex < visibleElements.length; nextIndex += 1) {
       const first = visibleElements[index];
       const second = visibleElements[nextIndex];
-      if (first.kind === "text" && second.kind === "text" && !first.isFree && !second.isFree) continue;
-      if (overlapArea(first.rect, second.rect) > minOverlapArea) {
+      if (shouldSkipOverlap(first, second, measure)) continue;
+      if (hasMeaningfulOverlap(first.rect, second.rect)) {
         issues.push({
           type: "element-overlap",
           message: overlapMessage(first, second),
@@ -98,16 +99,16 @@ function overlapMessage(first: SlideMeasuredElement, second: SlideMeasuredElemen
   return "页面元素重叠";
 }
 
-function insetRect(rect: SlideRect, ratio: number): SlideRect {
+function expandRect(rect: SlideRect, ratio: number): SlideRect {
   const insetX = rect.width * ratio;
   const insetY = rect.height * ratio;
   return {
-    left: rect.left + insetX,
-    top: rect.top + insetY,
-    right: rect.right - insetX,
-    bottom: rect.bottom - insetY,
-    width: Math.max(rect.width - insetX * 2, 0),
-    height: Math.max(rect.height - insetY * 2, 0)
+    left: rect.left - insetX,
+    top: rect.top - insetY,
+    right: rect.right + insetX,
+    bottom: rect.bottom + insetY,
+    width: rect.width + insetX * 2,
+    height: rect.height + insetY * 2
   };
 }
 
@@ -119,4 +120,25 @@ function overlapArea(first: SlideRect, second: SlideRect) {
   const width = Math.max(0, Math.min(first.right, second.right) - Math.max(first.left, second.left));
   const height = Math.max(0, Math.min(first.bottom, second.bottom) - Math.max(first.top, second.top));
   return width * height;
+}
+
+function hasMeaningfulOverlap(first: SlideRect, second: SlideRect) {
+  const area = overlapArea(first, second);
+  if (area <= minOverlapArea) return false;
+  const firstArea = first.width * first.height;
+  const secondArea = second.width * second.height;
+  const smallerArea = Math.min(firstArea, secondArea);
+  return smallerArea > 0 && area / smallerArea >= minOverlapRatio;
+}
+
+function shouldSkipOverlap(first: SlideMeasuredElement, second: SlideMeasuredElement, measure: SlideMeasure) {
+  const firstIsFlow = isFlowElement(first);
+  const secondIsFlow = isFlowElement(second);
+  if (first.kind === "text" && second.kind === "text" && firstIsFlow && secondIsFlow) return true;
+  if (measure.textFlow === "grid" && firstIsFlow && secondIsFlow) return true;
+  return false;
+}
+
+function isFlowElement(element: SlideMeasuredElement) {
+  return element.layout === "flow" || (!element.isFree && element.layout !== "free");
 }
